@@ -1,0 +1,3 @@
+/home/allenyuan/balance/pybind_imu/build/CMakeFiles/imu_py.dir
+/home/allenyuan/balance/pybind_imu/build/CMakeFiles/edit_cache.dir
+/home/allenyuan/balance/pybind_imu/build/CMakeFiles/rebuild_cache.dir
