@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "/home/allenyuan/balance/pybind_imu"
+    "cmake.sourceDirectory": "/home/allenyuan/balance/pybind_imu",
+    "cmake.ignoreCMakeListsMissing": true
 }

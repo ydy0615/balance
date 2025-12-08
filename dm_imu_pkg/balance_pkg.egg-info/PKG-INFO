@@ -1,0 +1,128 @@
+Metadata-Version: 2.4
+Name: balance-pkg
+Version: 0.1.0
+Summary: Balance project with pybind11 IMU driver
+Author: Your Name
+Author-email: Your Name <you@example.com>
+License-Expression: MIT
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pybind11>=2.10
+Dynamic: author
+Dynamic: license-file
+Dynamic: requires-python
+
+# DM‑IMU USB 驱动库
+
+## 项目简介
+`dm_imu` 目录下实现了一个 **纯 C++ 的 USB IMU 驱动库**，原始代码基于 ROS，但已完全去除 ROS 依赖，使用 POSIX 串口 API 与 IMU 通信。库提供：
+
+- 串口初始化、波特率配置
+- IMU 启动、停止以及配置指令（加速度、陀螺仪、欧拉角等）
+- 线程安全的数据采集（`IMU_Data` 结构体）
+- 简单的 C++ 接口 `DmImu`，无需任何 ROS 环境即可使用
+
+## 目录结构
+```
+dm_imu/
+├─ bsp_crc.cpp / bsp_crc.h      # CRC 校验实现
+├─ imu_driver.cpp / imu_driver.h# 主驱动实现（已去除 ROS）
+├─ test_imu.cpp                # 示例程序，演示如何使用库
+└─ README.md                   # 本文档
+```
+
+## 编译方法
+
+### 依赖
+- **C++17** 编译器（gcc/clang）
+- POSIX 系统（Linux）提供的串口头文件 `<fcntl.h>、<unistd.h>、<termios.h>`
+- 标准库（`<thread>、<mutex>、<atomic>` 等）
+
+### 编译示例
+```bash
+# 进入项目根目录
+cd /home/allenyuan/balance
+
+# 编译库源码（生成目标文件）
+g++ -std=c++17 -c dm_imu/bsp_crc.cpp -o bsp_crc.o
+g++ -std=c++17 -c dm_imu/imu_driver.cpp -o imu_driver.o
+
+# 编译示例程序并链接
+g++ -std=c++17 test_imu.cpp bsp_crc.o imu_driver.o -o test_imu -lpthread
+```
+
+> **说明**：如果你希望将库封装为静态或动态库，只需将 `bsp_crc.o` 与 `imu_driver.o` 打包为 `libdm_imu.a`（或 `libdm_imu.so`），然后在链接时使用 `-L. -ldm_imu`。
+
+## 示例程序 `test_imu.cpp`
+
+```cpp
+// test_imu.cpp
+// 演示如何使用纯 C++ 的 DM‑IMU 驱动库读取数据
+
+#include "imu_driver.h"
+#include <iostream>
+#include <thread>
+#include <chrono>
+
+int main()
+{
+    // 根据实际设备路径与波特率创建对象
+    dmbot_serial::DmImu imu("/dev/ttyACM1", 921600);
+
+    // 启动采集线程
+    if (!imu.start()) {
+        std::cerr << "Failed to start IMU driver." << std::endl;
+        return 1;
+    }
+
+    // 连续读取 1000 次数据（约 10 秒）
+    for (int i = 0; i < 1000; ++i) {
+        IMU_Data d = imu.getData();
+
+        std::cout << "Roll: " << d.roll << "  Pitch: " << d.pitch
+                  << "  Yaw: " << d.yaw << std::endl;
+        std::cout << "Acc  : [" << d.accx << ", " << d.accy << ", " << d.accz << "]"
+                  << std::endl;
+        std::cout << "Gyro : [" << d.gyrox << ", " << d.gyroy << ", " << d.gyroz << "]"
+                  << std::endl;
+        std::cout << "-----------------------------------------" << std::endl;
+
+        // 10 ms 间隔（约 100 Hz）
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    // 停止采集并关闭串口
+    imu.stop();
+
+    return 0;
+}
+```
+
+### 运行示例
+```bash
+# 编译（参考上面的编译示例）
+g++ -std=c++17 test_imu.cpp bsp_crc.o imu_driver.o -o test_imu -lpthread
+
+# 运行
+./test_imu
+```
+
+运行后，程序会在终端持续打印 IMU 的欧拉角、加速度和陀螺仪数据。若串口未打开或设备路径错误，程序会在初始化阶段输出错误信息并退出。
+
+## 常见问题
+
+| 问题 | 可能原因 | 解决办法 |
+|------|----------|----------|
+| 程序启动后没有数据输出 | 串口未打开或设备路径错误 | 确认 IMU 已正确连接，`/dev/ttyACM1` 是否存在；如有不同，请在 `test_imu.cpp` 中修改构造函数的 `port` 参数 |
+| `write` / `read` 返回错误 | 波特率不匹配 | 检查 IMU 手册，确认波特率是否为 921600；如需修改，请在 `DmImu` 构造函数的 `baud` 参数中传入正确值 |
+| 编译报缺少头文件 | 开发环境缺少 POSIX 串口头文件 | 在 Linux 上默认可用；若使用交叉编译，请确保交叉工具链包含对应头文件 |
+
+## 许可证
+本项目采用 MIT 许可证，详情见 `LICENSE`（若项目中未提供，请自行添加）。
+
+---
+
+**祝你使用愉快！** 如有其他需求（如添加四元数计算、回调机制等），欢迎进一步扩展此库。

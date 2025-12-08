@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61", "wheel", "pybind11>=2.10", "cmake"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dm_imu_pkg"
+version = "0.1.0"
+description = "Balance project with pybind11 IMU driver"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [{name = "allenyuan", email = "allenyuan410@gmail.com"}]
+dependencies = [
+    "pybind11>=2.10",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[tool.setuptools.packages.find]
+where = ["dm_imu_pkg"]
