@@ -12,9 +12,6 @@ license = "MIT"
 authors = [{name = "allenyuan", email = "allenyuan410@gmail.com"}]
 dependencies = [
     "pybind11>=2.10",
-    "numpy<2.0",
-    "pyserial>=3.5",
-    "gradio",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
