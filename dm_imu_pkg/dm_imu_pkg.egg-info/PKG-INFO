@@ -13,7 +13,7 @@ License-File: LICENSE
 Requires-Dist: pybind11>=2.10
 Requires-Dist: numpy<2.0
 Requires-Dist: pyserial>=3.5
-Requires-Dist: gradio
+Requires-Dist: gradio<5.0
 Dynamic: author
 Dynamic: license-file
 Dynamic: requires-python

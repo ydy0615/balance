@@ -27,6 +27,7 @@ def log(msg: str) -> None:
 # 全局状态
 # -------------------------------------------------
 controller: BalanceController | None = None   # 单例
+motors_enabled = False   # 电机使能状态
 
 # -------------------------------------------------
 # 安全创建 BalanceController（带重试）
@@ -202,9 +203,9 @@ with gr.Blocks() as demo:
             start_btn   = gr.Button("▶️ 启动平衡控制")
             status_box  = gr.Textbox(label="状态", value=init_status, interactive=False)
 
-            enable_btn.click(fn=enable_all, inputs=None, outputs=[status_box, log_box])
-            disable_btn.click(fn=disable_all, inputs=None, outputs=[status_box, log_box])
-            start_btn.click(fn=start_balance, inputs=None, outputs=[status_box, log_box])
+            enable_btn.click(fn=enable_all, inputs=None, outputs=[status_box, log_box]) 
+            disable_btn.click(fn=disable_all, inputs=None, outputs=[status_box, log_box]) 
+            start_btn.click(fn=start_balance, inputs=None, outputs=[status_box, log_box]) 
 
         # 中间：位置控制
         with gr.Column():

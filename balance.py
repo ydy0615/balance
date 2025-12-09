@@ -1,5 +1,5 @@
 import time
-import imu_py
+from dm_imu_pkg import imu_py
 from Legs_controller import LegsController
 
 class BalanceController:
