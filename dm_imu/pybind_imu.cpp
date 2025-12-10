@@ -1,6 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include "dm_imu/imu_driver.h"
+#include "imu_driver.h"
 
 namespace py = pybind11;
 using namespace dmbot_serial;

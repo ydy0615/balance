@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC -flto=auto -shared  -o imu_py.cpython-310-aarch64-linux-gnu.so CMakeFiles/imu_py.dir/pybind_imu.cpp.o CMakeFiles/imu_py.dir/home/allenyuan/balance/dm_imu/imu_driver.cpp.o CMakeFiles/imu_py.dir/home/allenyuan/balance/dm_imu/bsp_crc.cpp.o  -lpthread 

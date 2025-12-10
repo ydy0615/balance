@@ -5,9 +5,7 @@ import sys
 def _load_imu_module():
     """
     Load the compiled pybind11 module ``imu_py``.
-    When the package is installed via ``pip install .`` the shared object
-    will be placed next to this ``__init__.py``. During development it may
-    still reside in the build directory under ``src/pybind_imu/build``.
+    The shared object should be placed in the ``build`` directory next to this ``__init__.py``.
     """
     # 1. Try to import if the .so is already in the package directory.
     try:
@@ -16,19 +14,12 @@ def _load_imu_module():
     except Exception:
         pass
 
-    # 2. Fallback: locate the build output relative to the repository root.
+    # 2. Fallback: locate the build output relative to the package root.
     possible_paths = [
-        pathlib.Path(__file__).parent.parent
-        / "src"
-        / "pybind_imu"
-        / "build"
-        / "imu_py.cpython-310-aarch64-linux-gnu.so",
+        pathlib.Path(__file__).parent / "build" / "imu_py.cpython-310-darwin.so",
+        pathlib.Path(__file__).parent / "build" / "imu_py.cpython-312-darwin.so",
         # Generic pattern for other Python versions / architectures
-        pathlib.Path(__file__).parent.parent
-        / "src"
-        / "pybind_imu"
-        / "build"
-        / "imu_py.*.so",
+        pathlib.Path(__file__).parent / "build" / "imu_py.*.so",
     ]
 
     for p in possible_paths:
