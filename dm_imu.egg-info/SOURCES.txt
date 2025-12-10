@@ -2,6 +2,7 @@ LICENSE
 README.md
 pyproject.toml
 setup.py
+./dm_imu/__init__.py
 dm_imu/__init__.py
 dm_imu.egg-info/PKG-INFO
 dm_imu.egg-info/SOURCES.txt

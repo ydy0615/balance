@@ -41,15 +41,17 @@ class CMakeBuild(build_ext):
         ]
 
         # 1) configure
+        old_cwd = os.getcwd()
         os.chdir(str(build_temp))
         self.spawn(["cmake", str(ext.sourcedir)] + cmake_args)
         # 2) build
         self.spawn(
             ["cmake", "--build", ".", "--config", cfg, "--", f"-j{os.cpu_count() or 1}"],
         )
+        os.chdir(old_cwd)
 
 # Path to the pybind11 C++ source directory.
-pybind_src = pathlib.Path(__file__).parent / "dm_imu"
+pybind_src = pathlib.Path(__file__).parent
 
 setup(
     name="dm_imu",
@@ -58,8 +60,9 @@ setup(
     description="DM IMU driver with pybind11",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
-    packages=["dm_imu"],
-    ext_modules=[CMakeExtension("imu_py", sourcedir=str(pybind_src))],
+    packages=find_packages(where="."),
+    package_dir={"": "."},
+    ext_modules=[CMakeExtension("dm_imu.imu_py", sourcedir=str(pybind_src))],
     cmdclass={"build_ext": CMakeBuild},
     zip_safe=False,
     python_requires=">=3.8",
