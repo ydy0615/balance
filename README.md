@@ -1,111 +1,120 @@
-# DM‑IMU USB 驱动库
+# 四足机器人控制面板（Balance）  
+**基于 Gradio 的 Web UI，封装了 `BalanceController`、`LegsController` 与 IMU 驱动，实现串口自动打开、日志记录、实时电机使能/失能、位置与速度控制、扭矩读取以及后台平衡循环。**  
+
+## 目录
+- [项目简介](#项目简介)  
+- [环境要求](#环境要求)  
+- [快速安装](#快速安装)  
+- [运行方式](#运行方式)  
+- [主要功能](#主要功能)  
+- [代码结构概览](#代码结构概览)  
+- [使用说明](#使用说明)  
+- [常见问题与故障排查](#常见问题与故障排查)  
+- [许可证](#许可证)  
 
 ## 项目简介
-`dm_imu` 目录下实现了一个 **纯 C++ 的 USB IMU 驱动库**，原始代码基于 ROS，但已完全去除 ROS 依赖，使用 POSIX 串口 API 与 IMU 通信。库提供：
+本项目提供一个面向四足机器人的控制面板，使用 **Gradio** 构建网页 UI，能够在浏览器中直接操控机器人。核心逻辑封装在 `BalanceController`（位于 `balance.py`）中，内部调用 `LegsController`（`Legs_controller.py`）完成电机的初始化、使能/失能、扭矩读取和位置控制；同时通过 `dm_imu` 包的 `DmImu` 实现 IMU 数据获取并驱动平衡算法。
 
-- 串口初始化、波特率配置
-- IMU 启动、停止以及配置指令（加速度、陀螺仪、欧拉角等）
-- 线程安全的数据采集（`IMU_Data` 结构体）
-- 简单的 C++ 接口 `DmImu`，无需任何 ROS 环境即可使用
+> **注意**：若硬件未连接，`BalanceController` 与 `LegsController` 会捕获异常并创建 dummy 对象，保证脚本仍可运行而不会崩溃。
 
-## 目录结构
-```
-dm_imu/
-├─ bsp_crc.cpp / bsp_crc.h      # CRC 校验实现
-├─ imu_driver.cpp / imu_driver.h# 主驱动实现（已去除 ROS）
-├─ test_imu.cpp                # 示例程序，演示如何使用库
-└─ README.md                   # 本文档
-```
+## 环境要求
+- **操作系统**：Linux（POSIX 串口）或 Windows（使用对应的串口驱动）  
+- **Python**：>=3.8  
+- **依赖库**（已在 `pyproject.toml` 中声明）  
+  - `gradio<6.0`  
+  - `pyserial>=3.5`  
+  - `numpy<2.0`  
+  - `pybind11>=2.10`（用于编译 C++ IMU 驱动）  
+- **硬件**  
+  - 4×腿部电机（DM4340）+ 4×轮子电机（DMH6215）  
+  - IMU（通过 `dm_imu` 包的 `DmImu`）  
 
-## 编译方法
-
-### 依赖
-- **C++17** 编译器（gcc/clang）
-- POSIX 系统（Linux）提供的串口头文件 `<fcntl.h>、<unistd.h>、<termios.h>`
-- 标准库（`<thread>、<mutex>、<atomic>` 等）
-
-### 编译示例
+## 快速安装
 ```bash
-# 进入项目根目录
-cd /home/allenyuan/balance
+# 克隆仓库
+git clone https://github.com/ydy0615/balance.git
+cd balance
 
-# 编译库源码（生成目标文件）
-g++ -std=c++17 -c dm_imu/bsp_crc.cpp -o bsp_crc.o
-g++ -std=c++17 -c dm_imu/imu_driver.cpp -o imu_driver.o
+# 创建并激活虚拟环境（推荐）
+python -m venv venv
+.\venv\Scripts\activate   # Windows
+source venv/bin/activate  # Linux/macOS
 
-# 编译示例程序并链接
-g++ -std=c++17 test_imu.cpp bsp_crc.o imu_driver.o -o test_imu -lpthread
+# 安装 Python 依赖
+pip install -r requirements.txt   # 若没有此文件，可手动安装
+pip install gradio pyserial numpy pybind11
+
+# 编译 C++ IMU 驱动（需要 cmake、gcc/clang）
+mkdir build && cd build
+cmake .. && cmake --build .
+cd ..
 ```
 
-> **说明**：如果你希望将库封装为静态或动态库，只需将 `bsp_crc.o` 与 `imu_driver.o` 打包为 `libdm_imu.a`（或 `libdm_imu.so`），然后在链接时使用 `-L. -ldm_imu`。
+> 若只想运行 UI 而不编译 C++ 部分，可跳过最后的编译步骤，`dm_imu` 包会在运行时尝试加载已编译的 `.so`/`.dll`，若不存在则使用 Python 伪实现（仅用于调试）。
 
-## 示例程序 `test_imu.cpp`
-
-```cpp
-// test_imu.cpp
-// 演示如何使用纯 C++ 的 DM‑IMU 驱动库读取数据
-
-#include "imu_driver.h"
-#include <iostream>
-#include <thread>
-#include <chrono>
-
-int main()
-{
-    // 根据实际设备路径与波特率创建对象
-    dmbot_serial::DmImu imu("/dev/ttyACM1", 921600);
-
-    // 启动采集线程
-    if (!imu.start()) {
-        std::cerr << "Failed to start IMU driver." << std::endl;
-        return 1;
-    }
-
-    // 连续读取 1000 次数据（约 10 秒）
-    for (int i = 0; i < 1000; ++i) {
-        IMU_Data d = imu.getData();
-
-        std::cout << "Roll: " << d.roll << "  Pitch: " << d.pitch
-                  << "  Yaw: " << d.yaw << std::endl;
-        std::cout << "Acc  : [" << d.accx << ", " << d.accy << ", " << d.accz << "]"
-                  << std::endl;
-        std::cout << "Gyro : [" << d.gyrox << ", " << d.gyroy << ", " << d.gyroz << "]"
-                  << std::endl;
-        std::cout << "-----------------------------------------" << std::endl;
-
-        // 10 ms 间隔（约 100 Hz）
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-
-    // 停止采集并关闭串口
-    imu.stop();
-
-    return 0;
-}
-```
-
-### 运行示例
+## 运行方式
 ```bash
-# 编译（参考上面的编译示例）
-g++ -std=c++17 test_imu.cpp bsp_crc.o imu_driver.o -o test_imu -lpthread
+python main.py
+```
+启动后会在终端显示类似信息：
+```
+Running on http://0.0.0.0:7860/
+```
+在浏览器打开该地址即可看到 **四足机器人控制面板**。
 
-# 运行
-./test_imu
+## 主要功能
+| 功能 | 对应后端函数 | UI 控件 | 说明 |
+|------|--------------|--------|------|
+| 自动打开串口 | `open_port` | - | 程序启动时即尝试实例化 `BalanceController` 并打开串口 |
+| 电机使能 | `enable_all` | “✅ 使能全部” 按钮 | 使能四条腿电机 + 四个轮子电机 |
+| 电机失能 | `disable_all` | “❌ 失能全部” 按钮 | 失能所有电机 |
+| 启动平衡控制 | `start_balance` | “▶️ 启动平衡控制” 按钮 | 检查电机是否已使能，随后在守护线程中运行 `run_balance_loop` |
+| 位置控制 | `set_position` | 四个滑块 + “📍 设置位置” 按钮 | 通过 `control_legs_pos` 设置四条腿的位置（0~0.85）与速度比例（0.1~1.0） |
+| 扭矩读取 | `get_torque` | “🔍 读取扭矩” 按钮 | 调用 `controller.get_legs_torque()`，返回四条腿的扭矩值 |
+| 实时日志 | `refresh_log` | “刷新日志” 按钮 + 文本框 | 读取 `ui.log`（写入位置 `LOG_PATH = "ui.log"`）并显示在 UI 中 |
+| 日志写入 | `log`（内部） | - | 所有关键操作均通过 `log(msg)` 同时写入文件并打印到控制台，便于调试 |
+
+## 代码结构概览
+```
+balance/
+│
+├─ main.py               # Gradio UI 与业务入口
+├─ balance.py            # BalanceController（平衡算法、线程管理）
+├─ Legs_controller.py    # LegsController（电机底层控制）
+├─ dm_imu/               # C++ IMU 驱动（pybind11 包装）
+│   ├─ src/
+│   │   ├─ imu_driver.cpp
+│   │   └─ bsp_crc.cpp
+│   └─ __init__.py
+├─ pyproject.toml        # 项目元信息与依赖声明
+├─ README.md             # 本文档
+└─ ... (其他辅助脚本、测试文件)
 ```
 
-运行后，程序会在终端持续打印 IMU 的欧拉角、加速度和陀螺仪数据。若串口未打开或设备路径错误，程序会在初始化阶段输出错误信息并退出。
+## 使用说明
+1. **检查硬件**：确保机器人电机控制板和 IMU 已正确连接，串口设备路径与 `BalanceController.__init__` 中的默认值相符（`/dev/dm-u2can`、`/dev/dm-imu`）。若使用不同路径，请在 `main.py` 或 `balance.py` 中自行修改。  
+2. **启动 UI**：运行 `python main.py`，打开浏览器访问 `http://<本机IP>:7860`。  
+3. **日志查看**：点击 “刷新日志” 可实时读取 `ui.log`。若日志文件不存在，首次点击会自动创建。  
+4. **电机使能**：先点击 “✅ 使能全部”，随后才能使用位置或扭矩功能。  
+5. **位置调节**：调节四个滑块后点击 “📍 设置位置”，下方的 “位置设置结果” 框会显示返回信息。  
+6. **扭矩读取**：点击 “🔍 读取扭矩”，右侧文本框会显示四条腿当前扭矩（N/m），若读取失败则显示 “错误”。  
+7. **启动平衡**：在电机已使能后点击 “▶️ 启动平衡控制”。后台线程会不断读取 IMU 数据并根据偏置调节腿部位置。若出现异常，日志中会记录详细信息。  
 
-## 常见问题
-
-| 问题 | 可能原因 | 解决办法 |
+## 常见问题与故障排查
+| 问题 | 可能原因 | 解决方案 |
 |------|----------|----------|
-| 程序启动后没有数据输出 | 串口未打开或设备路径错误 | 确认 IMU 已正确连接，`/dev/ttyACM1` 是否存在；如有不同，请在 `test_imu.cpp` 中修改构造函数的 `port` 参数 |
-| `write` / `read` 返回错误 | 波特率不匹配 | 检查 IMU 手册，确认波特率是否为 921600；如需修改，请在 `DmImu` 构造函数的 `baud` 参数中传入正确值 |
-| 编译报缺少头文件 | 开发环境缺少 POSIX 串口头文件 | 在 Linux 上默认可用；若使用交叉编译，请确保交叉工具链包含对应头文件 |
+| **UI 无法打开** | 未安装 `gradio` 或端口被占用 | `pip install gradio`，或更换 `server_port` 参数 |
+| **串口打开失败** | 设备路径错误、权限不足或硬件未连接 | 检查 `BalanceController.__init__` 中的 `leg_port` 与 `imu_port`，在 Linux 上使用 `sudo chmod a+rw /dev/ttyUSB*` |
+| **日志不刷新** | `ui.log` 未生成或文件被锁定 | 确认 `log()` 已被调用；手动删除 `ui.log` 让程序重新创建 |
+| **电机不使能** | `LegsController` 初始化异常 | 查看终端输出的 “初始化 LegsController 失败” 信息；确保 `u2can` 包已正确安装且串口可用 |
+| **平衡控制未启动** | `motors_enabled` 为 `False`（未使能） | 必须先点击 “✅ 使能全部”，然后再点击 “▶️ 启动平衡控制” |
+| **读取扭矩返回 “错误”** | `controller.get_legs_torque()` 抛异常 | 检查 `LegsController.get_legs_torque` 是否成功刷新电机状态，确保电机已连接 |
+| **IMU 数据异常** | IMU 未启动或波特率不匹配 | 确认 `BalanceController.__init__` 中的 `imu_port` 与 `imu_baud` 与实际硬件匹配；若硬件缺失，程序会使用 DummyImu（返回零姿态） |
 
 ## 许可证
-本项目采用 MIT 许可证，详情见 `LICENSE`（若项目中未提供，请自行添加）。
+本项目采用 **MIT 许可证**。详情请参见根目录下的 `LICENSE` 文件。
 
 ---
 
-**祝你使用愉快！** 如有其他需求（如添加四元数计算、回调机制等），欢迎进一步扩展此库。
+**后续操作**  
+如需进一步修改或添加信息，可在此文件中直接编辑后保存。
