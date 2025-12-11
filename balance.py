@@ -1,5 +1,5 @@
 import time
-from dm_imu_pkg import imu_py
+from dm_imu import imu_py
 from Legs_controller import LegsController
 
 class BalanceController:
@@ -144,14 +144,14 @@ class BalanceController:
         # self.imu.stop()
 
 
-if __name__ == "__main__":
-    # 直接运行脚本时的入口
+def quick_test():
+    """用于开发调试的快捷入口，手动调用时执行完整流程。"""
     controller = BalanceController()
     controller.enable_all()
-    # 初始位置设置（与原脚本保持一致）
     controller.control_legs_pos(0.85, 0.85, 0.85, 0.85, vel=0.5)
-    time.sleep(5)  # 与原脚本的延时保持一致
-    # 进入平衡控制循环
+    time.sleep(5)
     controller.run_balance_loop()
-    # 结束后清理资源
     controller.shutdown()
+
+if __name__ == "__main__":
+    print("请通过 UI 打开串口并控制机器人。")

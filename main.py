@@ -23,11 +23,9 @@ def log(msg: str) -> None:
         h.flush()
     print(msg)  # optional, 可删除
 
-# -------------------------------------------------
-# 全局状态
-# -------------------------------------------------
 controller: BalanceController | None = None   # 单例
 motors_enabled = False   # 电机使能状态
+port_opened: bool = False  # 是否已打开串口
 
 # -------------------------------------------------
 # 安全创建 BalanceController（带重试）
@@ -45,28 +43,36 @@ def create_controller(retries: int = 3, delay: float = 1.0) -> BalanceController
     log("全部重试结束，仍未能创建 BalanceController")
     return None
 
-# -------------------------------------------------
+# ---------------------------------------印度洋15
+# ----------
 # UI 操作函数（统一异常捕获、日志记录、返回状态文字）
 # -------------------------------------------------
 def open_port() -> tuple:
     """创建 BalanceController 实例并打开串口（不自动使能）。"""
-    global controller
+    global controller, port_opened
     if controller is None:
         controller = create_controller()
         if controller is None:
             msg = "打开串口失败：无法创建 BalanceController"
             log(msg)
+            port_opened = False
             return (msg, msg)
         msg = "串口已打开"
         log(msg)
+        port_opened = True
         return (msg, msg)
     msg = "串口已打开（已存在实例）"
     log(msg)
+    port_opened = True
     return (msg, msg)
 
 def enable_all() -> tuple:
     """使能所有电机（腿部+轮子）。"""
     global motors_enabled
+    if not port_opened:
+        msg = "请先打开串口"
+        log(msg)
+        return (msg, msg)
     if controller is None:
         msg = "请先打开串口"
         return (msg, msg)
@@ -84,6 +90,10 @@ def enable_all() -> tuple:
 def disable_all() -> tuple:
     """失能所有电机。"""
     global motors_enabled
+    if not port_opened:
+        msg = "请先打开串口"
+        log(msg)
+        return (msg, msg)
     if controller is None:
         msg = "请先打开串口"
         return (msg, msg)
@@ -100,6 +110,10 @@ def disable_all() -> tuple:
 
 def set_position(pos1, pos2, pos3, pos4, vel) -> tuple:
     """设置四条腿的位置与速度比例。"""
+    if not port_opened:
+        msg = "请先打开串口"
+        log(msg)
+        return (msg, msg)
     if controller is None:
         msg = "请先打开串口"
         return (msg, msg)
@@ -115,6 +129,10 @@ def set_position(pos1, pos2, pos3, pos4, vel) -> tuple:
 
 def get_torque() -> tuple:
     """读取四条腿的扭矩，返回字符串列表。"""
+    if not port_opened:
+        msg = "未打开串口"
+        log(msg)
+        return (["未打开串口"] * 4, msg)
     if controller is None:
         msg = "未打开串口"
         log(msg)
@@ -158,6 +176,10 @@ def start_balance_thread() -> None:
 
 def start_balance() -> tuple:
     """检查电机是否已使能后启动平衡控制。"""
+    if not port_opened:
+        msg = "请先打开串口"
+        log(msg)
+        return (msg, msg)
     if not motors_enabled:
         msg = "启动平衡控制失败：电机未使能"
         log(msg)
@@ -180,7 +202,7 @@ def refresh_log() -> str:
 # -------------------------------------------------
 # 自动打开串口并初始化 UI
 # -------------------------------------------------
-init_status, _ = open_port()  # 自动打开串口
+init_status = "未打开串口"
 
 # -------------------------------------------------
 # Gradio UI
@@ -198,14 +220,16 @@ with gr.Blocks() as demo:
         with gr.Column():
             gr.Markdown("## 电机控制")
             # 已移除 “打开串口” 按钮，串口在启动时已自动打开
+            open_btn = gr.Button("🔌 打开串口")
             enable_btn  = gr.Button("✅ 使能全部")
             disable_btn = gr.Button("❌ 失能全部")
             start_btn   = gr.Button("▶️ 启动平衡控制")
             status_box  = gr.Textbox(label="状态", value=init_status, interactive=False)
 
-            enable_btn.click(fn=enable_all, inputs=None, outputs=[status_box, log_box]) 
-            disable_btn.click(fn=disable_all, inputs=None, outputs=[status_box, log_box]) 
-            start_btn.click(fn=start_balance, inputs=None, outputs=[status_box, log_box]) 
+            open_btn.click(fn=open_port, inputs=None, outputs=[status_box, log_box])
+            enable_btn.click(fn=enable_all, inputs=None, outputs=[status_box, log_box])
+            disable_btn.click(fn=disable_all, inputs=None, outputs=[status_box, log_box])
+            start_btn.click(fn=start_balance, inputs=None, outputs=[status_box, log_box])
 
         # 中间：位置控制
         with gr.Column():
