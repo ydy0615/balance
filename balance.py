@@ -31,6 +31,7 @@ class BalanceController:
             self.imu = DummyImu()
         # 运行标志，控制主循环的退出
         self._running = False
+        self.offs=[0.0,0.0,0.0,0.0]
 
     # ---------- 电机管理 ----------
     def enable_all(self):
@@ -66,36 +67,35 @@ class BalanceController:
             print("警告: LegsController 未成功初始化串口，跳过位置控制。")
 
     # ---------- 私有工具 ----------
-    def _limit_offsets(self, offs):
+    def _limit_offsets(self,offs):
         """将偏置限制在 0~0.5 之间。"""
         return min(max(offs, 0.0), 0.5)
 
     def _update_offsets(self, data, dt):
-        offs=[0.0,0.0,0.0,0.0]
-        if data['pitch']>0.2:
-            offs[0]=offs[0]+0.0001*(data['pitch'])*pow(data['pitch'],0.1)
-            offs[1]=offs[1]+0.0001*(data['pitch'])*pow(data['pitch'],0.1)
-        if data['pitch']<-0.2:
-            offs[2]=offs[2]+0.0001*(-data['pitch'])*pow(-data['pitch'],0.1)
-            offs[3]=offs[3]+0.0001*(-data['pitch'])*pow(-data['pitch'],0.1)
-        if data['roll']<-0.2:
-            offs[0]=offs[0]+0.0001*(-data['roll'])*pow(-data['roll'],0.1)
-            offs[3]=offs[3]+0.0001*(-data['roll'])*pow(-data['roll'],0.1)
-        if data['roll']>0.2:
-            offs[1]=offs[1]+0.0001*(data['roll'])*pow(data['roll'],0.1)
-            offs[2]=offs[2]+0.0001*(data['roll'])*pow(data['roll'],0.1)
+        if data['pitch']>1:
+            self.offs[0]=self.offs[0]+0.0002*(data['pitch'])
+            self.offs[1]=self.offs[1]+0.0002*(data['pitch'])
+        if data['pitch']<-1:
+            self.offs[2]=self.offs[2]+0.0002*(-data['pitch'])
+            self.offs[3]=self.offs[3]+0.0002*(-data['pitch'])
+        if data['roll']<-1:
+            self.offs[0]=self.offs[0]+0.0001*(-data['roll'])
+            self.offs[3]=self.offs[3]+0.0001*(-data['roll'])
+        if data['roll']>1:
+            self.offs[1]=self.offs[1]+0.0001*(data['roll'])
+            self.offs[2]=self.offs[2]+0.0001*(data['roll'])
 		
         # 归一化到 0~0.5 区间
-        min_off = min(offs)
-        offs = [o - min_off for o in offs]
-        offs = [self._limit_offsets(o) for o in offs]
+        min_off = min(self.offs)
+        self.offs = [o - min_off for o in self.offs]
+        self.offs = [self._limit_offsets(o) for o in self.offs]
 
-        return offs
+        return self.offs
 
     # ---------- 主循环 ----------
     def run_balance_loop(self, max_vel=1.0):
         self._running = True
-        offs = [0.0, 0.0, 0.0, 0.0]
+        self.offs = [0.0, 0.0, 0.0, 0.0]
         prev_time = time.time()
 
         while self._running:
@@ -108,19 +108,20 @@ class BalanceController:
                 prev_time = cur_time
 
                 data = self.imu.getData()
-                offs = self._update_offsets(data, dt)
+                self.offs = self._update_offsets(data, dt)
 
                 if getattr(self.legs, "mc", None):
-                    vel = min(1.0, max_vel)
+                    vel = min(12, max_vel)
+                    # print(self.offs,data["roll"],data["pitch"])
                     self.control_legs_pos(
-                        0.85 - offs[0],
-                        0.85 - offs[1],
-                        0.85 - offs[2],
-                        0.85 - offs[3],
+                        0.85 - self.offs[0],
+                        0.85 - self.offs[1],
+                        0.85 - self.offs[2],
+                        0.85 - self.offs[3],
                         vel=vel,
                     )
                 else:
-                    print("调试: 偏置计算结果", offs)
+                    print("调试: 偏置计算结果", self.offs)
 
                 #print(f"euler: (roll={data['roll']:.2f}, pitch={data['pitch']:.2f}, yaw={data['yaw']:.2f})")
                 time.sleep(0.001)

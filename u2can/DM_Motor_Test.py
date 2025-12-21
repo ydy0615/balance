@@ -46,40 +46,40 @@ print("#####################")
 
 time.sleep(5)
 
-offs1=0.0
-offs2=0.0
-offs3=0.0
-offs4=0.0
+self.offs1=0.0
+self.offs2=0.0
+self.offs3=0.0
+self.offs4=0.0
 for i in range(1,10000):
-    MC1.control_Pos_Vel(Motor1,-0.85+offs1,12)
-    MC1.control_Pos_Vel(Motor2,0.85-offs2,12)
-    MC1.control_Pos_Vel(Motor3,0.85-offs3,12)
-    MC1.control_Pos_Vel(Motor4,-0.85+offs4,12)
+    MC1.control_Pos_Vel(Motor1,-0.85+self.offs1,12)
+    MC1.control_Pos_Vel(Motor2,0.85-self.offs2,12)
+    MC1.control_Pos_Vel(Motor3,0.85-self.offs3,12)
+    MC1.control_Pos_Vel(Motor4,-0.85+self.offs4,12)
 
     data = imu.getData()
     if data['pitch']>0.2:
-        offs1=offs1+0.0001*(data['pitch'])*pow(data['pitch'],0.5)
-        offs2=offs2+0.0001*(data['pitch'])*pow(data['pitch'],0.5)
+        self.offs1=self.offs1+0.0001*(data['pitch'])*pow(data['pitch'],0.5)
+        self.offs2=self.offs2+0.0001*(data['pitch'])*pow(data['pitch'],0.5)
     if data['pitch']<-0.2:
-        offs3=offs3+0.0001*(-data['pitch'])*pow(-data['pitch'],0.5)
-        offs4=offs4+0.0001*(-data['pitch'])*pow(-data['pitch'],0.5)
+        self.offs3=self.offs3+0.0001*(-data['pitch'])*pow(-data['pitch'],0.5)
+        self.offs4=self.offs4+0.0001*(-data['pitch'])*pow(-data['pitch'],0.5)
     if data['roll']<-0.2:
-        offs1=offs1+0.0001*(-data['roll'])*pow(-data['roll'],0.2)
-        offs4=offs4+0.0001*(-data['roll'])*pow(-data['roll'],0.2)
+        self.offs1=self.offs1+0.0001*(-data['roll'])*pow(-data['roll'],0.2)
+        self.offs4=self.offs4+0.0001*(-data['roll'])*pow(-data['roll'],0.2)
     if data['roll']>0.2:
-        offs2=offs2+0.0001*(data['roll'])*pow(data['roll'],0.2)
-        offs3=offs3+0.0001*(data['roll'])*pow(data['roll'],0.2)
-    add = min(offs1,offs2,offs3,offs4)
-    offs1=offs1-add
-    offs2=offs2-add
-    offs3=offs3-add
-    offs4=offs4-add
-    if offs1>0.5: offs1=0.5
-    if offs2>0.5: offs2=0.5
-    if offs3>0.5: offs3=0.5
-    if offs4>0.5: offs4=0.5
+        self.offs2=self.offs2+0.0001*(data['roll'])*pow(data['roll'],0.2)
+        self.offs3=self.offs3+0.0001*(data['roll'])*pow(data['roll'],0.2)
+    add = min(self.offs1,self.offs2,self.offs3,self.offs4)
+    self.offs1=self.offs1-add
+    self.offs2=self.offs2-add
+    self.offs3=self.offs3-add
+    self.offs4=self.offs4-add
+    if self.offs1>0.5: self.offs1=0.5
+    if self.offs2>0.5: self.offs2=0.5
+    if self.offs3>0.5: self.offs3=0.5
+    if self.offs4>0.5: self.offs4=0.5
     print(f"euler: (roll={data['roll']:.2f}, pitch={data['pitch']:.2f}, yaw={data['yaw']:.2f})")
-    print(offs3,offs4,offs1,offs2,data['pitch'])
+    print(self.offs3,self.offs4,self.offs1,self.offs2,data['pitch'])
     time.sleep(0.001)
 
 MC1.disable(Wheel1)

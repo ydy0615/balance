@@ -174,6 +174,14 @@ def start_balance_thread() -> None:
     thread.start()
     log("平衡控制线程已启动")
 
+def start_spd_thread(nomspd,offspd) -> None:
+    """在守护线程中启动平衡循环。"""
+    if controller is None:
+        log("启动speed控制失败：无法创建 BalanceController")
+        return
+    controller.legs.control_wheels_vel(nomspd,offspd)
+    log("speed线程已启动")
+
 def start_balance() -> tuple:
     """检查电机是否已使能后启动平衡控制。"""
     if not port_opened:
@@ -204,6 +212,21 @@ def refresh_log() -> str:
 # -------------------------------------------------
 init_status = "未打开串口"
 
+def control_speed(spd,off_spd):
+    """检查电机是否已使能后启动平衡控制。"""
+    if not port_opened:
+        msg = "请先打开串口"
+        log(msg)
+        return (msg, msg)
+    if not motors_enabled:
+        msg = "启动平衡控制失败：电机未使能"
+        log(msg)
+        return (msg, msg)
+    start_spd_thread(spd,off_spd)
+    msg = "平衡控制已启动"
+    log(msg)
+    return (msg, msg)
+
 # -------------------------------------------------
 # Gradio UI
 # -------------------------------------------------
@@ -220,7 +243,7 @@ with gr.Blocks() as demo:
         with gr.Column():
             gr.Markdown("## 电机控制")
             # 已移除 “打开串口” 按钮，串口在启动时已自动打开
-            open_btn = gr.Button("🔌 打开串口")
+            open_btn    = gr.Button("🔌 打开串口")
             enable_btn  = gr.Button("✅ 使能全部")
             disable_btn = gr.Button("❌ 失能全部")
             start_btn   = gr.Button("▶️ 启动平衡控制")
@@ -230,27 +253,18 @@ with gr.Blocks() as demo:
             enable_btn.click(fn=enable_all, inputs=None, outputs=[status_box, log_box])
             disable_btn.click(fn=disable_all, inputs=None, outputs=[status_box, log_box])
             start_btn.click(fn=start_balance, inputs=None, outputs=[status_box, log_box])
-
-        # 中间：位置控制
+        
         with gr.Column():
-            gr.Markdown("## 位置控制")
-            pos1 = gr.Slider(0, 0.85, label="腿 1 位置")
-            pos2 = gr.Slider(0, 0.85, label="腿 2 位置")
-            pos3 = gr.Slider(0, 0.85, label="腿 3 位置")
-            pos4 = gr.Slider(0, 0.85, label="腿 4 位置")
-            vel = gr.Slider(0.1, 1.0, value=0.5, step=0.1, label="速度比例")
-            set_btn = gr.Button("📍 设置位置")
-            pos_status = gr.Textbox(label="位置设置结果", interactive=False)
-
-            set_btn.click(fn=set_position,
-                          inputs=[pos1, pos2, pos3, pos4, vel],
-                          outputs=[pos_status, log_box])
-
+            gr.Markdown("## speed控制")
+            normal_speed = gr.Slider(label="spd",minimum=-1,maximum=1,value=0.0,step=0.01)
+            off_speed = gr.Slider(label="off",minimum=-1,maximum=1,value=0.0,step=0.01)
+            normal_speed.change(fn= control_speed,inputs=[normal_speed,off_speed], outputs=[status_box, log_box])
+            off_speed.change(fn= control_speed,inputs=[normal_speed,off_speed], outputs=[status_box, log_box])
         # 右侧：扭矩读取
         with gr.Column():
             gr.Markdown("## 扭矩读取")
             torque_output = gr.Textbox(label="腿部扭矩 (N/m)", interactive=False)
-            read_btn = gr.Button("🔍 读取扭矩")
+            read_btn = gr.Button("� 读取扭矩")
             read_btn.click(fn=get_torque, inputs=None, outputs=[torque_output, log_box])
 
     demo.launch(server_name="0.0.0.0", server_port=7860, debug=True)

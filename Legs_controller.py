@@ -88,7 +88,7 @@ class LegsController:
         self.mc.control_Pos_Vel(self.motor4, -pos4, vel)
     
     def control_wheels_vel(self,vel,of_vel):
-        self.mc.control_Vel(self.wheel1,vel+of_vel)
-        self.mc.control_Vel(self.wheel2,vel-of_vel)
-        self.mc.control_Vel(self.wheel3,vel-of_vel)
-        self.mc.control_Vel(self.wheel4,vel+of_vel)
+        self.mc.control_Vel(self.wheel1,-(vel+of_vel))
+        self.mc.control_Vel(self.wheel2,(vel-of_vel))
+        self.mc.control_Vel(self.wheel3,-(vel-of_vel))
+        self.mc.control_Vel(self.wheel4,(vel+of_vel))
