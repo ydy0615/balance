@@ -255,7 +255,7 @@ with gr.Blocks() as demo:
             start_btn.click(fn=start_balance, inputs=None, outputs=[status_box, log_box])
         
         with gr.Column():
-            gr.Markdown("## speed控制")
+            gr.Markdown("## 速度控制")
             normal_speed = gr.Slider(label="spd",minimum=-1,maximum=1,value=0.0,step=0.01)
             off_speed = gr.Slider(label="off",minimum=-1,maximum=1,value=0.0,step=0.01)
             normal_speed.change(fn= control_speed,inputs=[normal_speed,off_speed], outputs=[status_box, log_box])
