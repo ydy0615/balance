@@ -174,13 +174,6 @@ def start_balance_thread() -> None:
     thread.start()
     log("平衡控制线程已启动")
 
-def start_spd_thread(nomspd,offspd) -> None:
-    """在守护线程中启动平衡循环。"""
-    if controller is None:
-        log("启动speed控制失败：无法创建 BalanceController")
-        return
-    controller.legs.control_wheels_vel(nomspd,offspd)
-    log("speed线程已启动")
 
 def start_balance() -> tuple:
     """检查电机是否已使能后启动平衡控制。"""
@@ -212,20 +205,62 @@ def refresh_log() -> str:
 # -------------------------------------------------
 init_status = "未打开串口"
 
-def control_speed(spd,off_spd):
-    """检查电机是否已使能后启动平衡控制。"""
+def update_speed(spd, off_spd):
+    """更新轮子速度（设置到控制器中，平衡循环自动读取）。"""
     if not port_opened:
         msg = "请先打开串口"
         log(msg)
         return (msg, msg)
-    if not motors_enabled:
-        msg = "启动平衡控制失败：电机未使能"
+    if controller is None:
+        msg = "未创建控制器"
         log(msg)
         return (msg, msg)
-    start_spd_thread(spd,off_spd)
-    msg = "平衡控制已启动"
-    log(msg)
-    return (msg, msg)
+    try:
+        # 直接设置到控制器的内部变量，平衡循环会读取
+        controller.set_wheel_velocity(spd, off_spd)
+        msg = f"速度已更新: {spd}, 转向: {off_spd}"
+        log(msg)
+        return (msg, msg)
+    except Exception as e:
+        msg = f"设置速度异常: {e}"
+        log(msg)
+        return (msg, msg)
+
+
+def update_pid(kp_pitch, ki_pitch, kd_pitch, kp_roll, ki_roll, kd_roll):
+    """更新 PID 参数。"""
+    if not port_opened:
+        msg = "请先打开串口"
+        log(msg)
+        return (msg, msg)
+    if controller is None:
+        msg = "未创建控制器"
+        log(msg)
+        return (msg, msg)
+    try:
+        controller.set_pid(kp_pitch, ki_pitch, kd_pitch, kp_roll, ki_roll, kd_roll)
+        msg = f"PID已更新: Pitch=[{kp_pitch}, {ki_pitch}, {kd_pitch}], Roll=[{kp_roll}, {ki_roll}, {kd_roll}]"
+        log(msg)
+        return (msg, msg)
+    except Exception as e:
+        msg = f"设置PID异常: {e}"
+        log(msg)
+        return (msg, msg)
+
+
+def reset_pid():
+    """重置 PID 状态。"""
+    if controller is not None:
+        try:
+            controller.reset_pid_state()
+            msg = "PID状态已重置"
+            log(msg)
+            return (msg, msg)
+        except Exception as e:
+            msg = f"重置失败: {e}"
+            log(msg)
+            return (msg, msg)
+    return ("未创建控制器", "未创建控制器")
 
 # -------------------------------------------------
 # Gradio UI
@@ -256,15 +291,34 @@ with gr.Blocks() as demo:
         
         with gr.Column():
             gr.Markdown("## 速度控制")
-            normal_speed = gr.Slider(label="spd",minimum=-1,maximum=1,value=0.0,step=0.01)
-            off_speed = gr.Slider(label="off",minimum=-1,maximum=1,value=0.0,step=0.01)
-            normal_speed.change(fn= control_speed,inputs=[normal_speed,off_speed], outputs=[status_box, log_box])
-            off_speed.change(fn= control_speed,inputs=[normal_speed,off_speed], outputs=[status_box, log_box])
+            normal_speed = gr.Slider(label="spd", minimum=-1, maximum=1, value=0.0, step=0.01)
+            off_speed = gr.Slider(label="off", minimum=-1, maximum=1, value=0.0, step=0.01)
+            normal_speed.change(fn=update_speed, inputs=[normal_speed, off_speed], outputs=[status_box, log_box])
+            off_speed.change(fn=update_speed, inputs=[normal_speed, off_speed], outputs=[status_box, log_box])
+        
+        # 中间：PID 参数调节
+        with gr.Column():
+            gr.Markdown("## PID 参数")
+            kp_pitch = gr.Slider(label="Kp Pitch", minimum=0.001, maximum=1.0, value=0.02, step=0.001)
+            ki_pitch = gr.Slider(label="Ki Pitch", minimum=0.0001, maximum=0.1, value=0.001, step=0.0001)
+            kd_pitch = gr.Slider(label="Kd Pitch", minimum=0.001, maximum=1.0, value=0.05, step=0.001)
+            kp_roll = gr.Slider(label="Kp Roll", minimum=0.001, maximum=1.0, value=0.02, step=0.001)
+            ki_roll = gr.Slider(label="Ki Roll", minimum=0.0001, maximum=0.1, value=0.001, step=0.0001)
+            kd_roll = gr.Slider(label="Kd Roll", minimum=0.001, maximum=1.0, value=0.05, step=0.001)
+            
+            update_pid_btn = gr.Button("应用PID参数")
+            reset_pid_btn = gr.Button("重置PID状态")
+            
+            update_pid_btn.click(fn=update_pid,
+                inputs=[kp_pitch, ki_pitch, kd_pitch, kp_roll, ki_roll, kd_roll],
+                outputs=[status_box, log_box])
+            reset_pid_btn.click(fn=reset_pid, inputs=None, outputs=[status_box, log_box])
+        
         # 右侧：扭矩读取
         with gr.Column():
             gr.Markdown("## 扭矩读取")
             torque_output = gr.Textbox(label="腿部扭矩 (N/m)", interactive=False)
-            read_btn = gr.Button("� 读取扭矩")
+            read_btn = gr.Button("📊 读取扭矩")
             read_btn.click(fn=get_torque, inputs=None, outputs=[torque_output, log_box])
 
     demo.launch(server_name="0.0.0.0", server_port=7860, debug=True)
