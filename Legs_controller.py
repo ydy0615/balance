@@ -50,14 +50,33 @@ class LegsController:
         """使能四条腿电机。"""
         for m in (self.motor1, self.motor2, self.motor3, self.motor4):
             self.mc.enable(m)
+        time.sleep(0.001)
+        for m in (self.motor1, self.motor2, self.motor3, self.motor4):
+            self.mc.enable(m)
+        time.sleep(0.001)
+        for m in (self.motor1, self.motor2, self.motor3, self.motor4):
+            self.mc.enable(m)
 
     def enable_wheels(self):
         """使能四个轮子电机。"""
         for w in (self.wheel1, self.wheel2, self.wheel3, self.wheel4):
             self.mc.enable(w)
-
+        time.sleep(0.001)
+        for w in (self.wheel1, self.wheel2, self.wheel3, self.wheel4):
+            self.mc.enable(w)
+        time.sleep(0.001)
+        for w in (self.wheel1, self.wheel2, self.wheel3, self.wheel4):
+            self.mc.enable(w)
     def disable_all(self):
         """一次性失能所有电机（腿+轮子）。"""
+        for m in (self.motor1, self.motor2, self.motor3, self.motor4,
+                  self.wheel1, self.wheel2, self.wheel3, self.wheel4):
+            self.mc.disable(m)
+        time.sleep(0.001)
+        for m in (self.motor1, self.motor2, self.motor3, self.motor4,
+                  self.wheel1, self.wheel2, self.wheel3, self.wheel4):
+            self.mc.disable(m)
+        time.sleep(0.001)
         for m in (self.motor1, self.motor2, self.motor3, self.motor4,
                   self.wheel1, self.wheel2, self.wheel3, self.wheel4):
             self.mc.disable(m)
@@ -88,7 +107,14 @@ class LegsController:
         self.mc.control_Pos_Vel(self.motor4, -pos4, vel)
     
     def control_wheels_vel(self,vel,of_vel):
+        
         self.mc.control_Vel(self.wheel1,-(vel+of_vel))
         self.mc.control_Vel(self.wheel2,(vel-of_vel))
         self.mc.control_Vel(self.wheel3,-(vel-of_vel))
         self.mc.control_Vel(self.wheel4,(vel+of_vel))
+        
+    def zero_position(self):
+        """将四条腿电机的位置归零（相对当前位置）。"""
+        for m in (self.motor1, self.motor2, self.motor3, self.motor4):
+            self.mc.control_Pos_Vel(m, 0, 0.5)
+        self.control_wheels_vel(0,0)

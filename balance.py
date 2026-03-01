@@ -32,6 +32,8 @@ class BalanceController:
         # 运行标志，控制主循环的退出
         self._running = False
         self.offs=[0.0,0.0,0.0,0.0]
+        self.wheels_vel=0.0
+        self.wheels_off=0.0
 
     # ---------- 电机管理 ----------
     def enable_all(self):
@@ -39,6 +41,7 @@ class BalanceController:
         if getattr(self.legs, "mc", None):
             self.legs.enable_legs()
             self.legs.enable_wheels()
+            self.zero_position()
         else:
             print("警告: LegsController 未成功初始化串口，跳过使能步骤。")
 
@@ -71,17 +74,17 @@ class BalanceController:
         """将偏置限制在 0~0.5 之间。"""
         return min(max(offs, 0.0), 0.5)
 
-    def _update_offsets(self, data, dt):
-        if data['pitch']>1:
+    def _update_offsets(self, data):
+        if data['pitch']>2:
             self.offs[0]=self.offs[0]+0.0002*(data['pitch'])
             self.offs[1]=self.offs[1]+0.0002*(data['pitch'])
-        if data['pitch']<-1:
+        if data['pitch']<-2:
             self.offs[2]=self.offs[2]+0.0002*(-data['pitch'])
             self.offs[3]=self.offs[3]+0.0002*(-data['pitch'])
-        if data['roll']<-1:
+        if data['roll']<-2:
             self.offs[0]=self.offs[0]+0.0001*(-data['roll'])
             self.offs[3]=self.offs[3]+0.0001*(-data['roll'])
-        if data['roll']>1:
+        if data['roll']>2:
             self.offs[1]=self.offs[1]+0.0001*(data['roll'])
             self.offs[2]=self.offs[2]+0.0001*(data['roll'])
 		
@@ -120,6 +123,9 @@ class BalanceController:
                         0.85 - self.offs[3],
                         vel=vel,
                     )
+                    
+                    self.legs.control_wheels_vel(self.wheels_vel,self.wheels_off)
+
                 else:
                     print("调试: 偏置计算结果", self.offs)
 
@@ -143,7 +149,9 @@ class BalanceController:
                 print(f"关闭串口时出现异常: {e}")
         # 若 imu_py 提供 stop 方法，可取消注释以下行
         # self.imu.stop()
-
+    def set_wheels_vel(self,vel,off):
+        self.wheels_vel=vel
+        self.wheels_off=off
 
 def quick_test():
     """用于开发调试的快捷入口，手动调用时执行完整流程。"""

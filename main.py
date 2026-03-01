@@ -1,4 +1,4 @@
-import gradio as gr
+﻿import gradio as gr
 from balance import BalanceController
 import logging
 import threading
@@ -43,7 +43,7 @@ def create_controller(retries: int = 3, delay: float = 1.0) -> BalanceController
     log("全部重试结束，仍未能创建 BalanceController")
     return None
 
-# ---------------------------------------印度洋15
+# ---------------------------------------
 # ----------
 # UI 操作函数（统一异常捕获、日志记录、返回状态文字）
 # -------------------------------------------------
@@ -179,7 +179,7 @@ def start_spd_thread(nomspd,offspd) -> None:
     if controller is None:
         log("启动speed控制失败：无法创建 BalanceController")
         return
-    controller.legs.control_wheels_vel(nomspd,offspd)
+    controller.set_wheels_vel(nomspd,offspd)
     log("speed线程已启动")
 
 def start_balance() -> tuple:
@@ -255,16 +255,16 @@ with gr.Blocks() as demo:
             start_btn.click(fn=start_balance, inputs=None, outputs=[status_box, log_box])
         
         with gr.Column():
-            gr.Markdown("## speed控制")
-            normal_speed = gr.Slider(label="spd",minimum=-1,maximum=1,value=0.0,step=0.01)
-            off_speed = gr.Slider(label="off",minimum=-1,maximum=1,value=0.0,step=0.01)
-            normal_speed.change(fn= control_speed,inputs=[normal_speed,off_speed], outputs=[status_box, log_box])
-            off_speed.change(fn= control_speed,inputs=[normal_speed,off_speed], outputs=[status_box, log_box])
+            gr.Markdown("## 速度控制")
+            normal_speed = gr.Slider(label="速度",minimum=-1,maximum=1,value=0.0,step=0.01)
+            off_speed = gr.Slider(label="转向",minimum=-0.5,maximum=0.5,value=0.0,step=0.01)
+            normal_speed.change(fn=control_speed,inputs=[normal_speed,off_speed], outputs=[status_box, log_box])
+            off_speed.change(fn=control_speed,inputs=[normal_speed,off_speed], outputs=[status_box, log_box])
         # 右侧：扭矩读取
         with gr.Column():
             gr.Markdown("## 扭矩读取")
             torque_output = gr.Textbox(label="腿部扭矩 (N/m)", interactive=False)
-            read_btn = gr.Button("� 读取扭矩")
+            read_btn = gr.Button("读取扭矩")
             read_btn.click(fn=get_torque, inputs=None, outputs=[torque_output, log_box])
 
     demo.launch(server_name="0.0.0.0", server_port=7860, debug=True)
