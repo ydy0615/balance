@@ -41,7 +41,7 @@ class BalanceController:
         if getattr(self.legs, "mc", None):
             self.legs.enable_legs()
             self.legs.enable_wheels()
-            self.zero_position()
+            self.legs.zero_position()
         else:
             print("警告: LegsController 未成功初始化串口，跳过使能步骤。")
 
@@ -111,7 +111,7 @@ class BalanceController:
                 prev_time = cur_time
 
                 data = self.imu.getData()
-                self.offs = self._update_offsets(data, dt)
+                self.offs = self._update_offsets(data)
 
                 if getattr(self.legs, "mc", None):
                     vel = min(12, max_vel)
@@ -125,7 +125,9 @@ class BalanceController:
                     )
                     
                     self.legs.control_wheels_vel(self.wheels_vel,self.wheels_off)
-
+                    print(self.offs[0],self.offs[1],self.offs[2],self.offs[3])
+                    print(data["roll"],data["pitch"])
+                    print(self.wheels_vel,self.wheels_off)
                 else:
                     print("调试: 偏置计算结果", self.offs)
 
