@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so               # Python C 扩展生成的共享库
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+*.manifest
+*.spec
+
+# C/C++ / CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+CMakeTmp/
+cmake_install.cmake
+Makefile
+install_manifest.txt
+compile_commands.json
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.exe
+*.lib
+*.exp
+*.ilk
+*.pdb
+*.map
+*.dSYM/
+*.vcxproj*
+*.vcproj*
+*.sln
+*.vcxproj.user
+*.vs/
+*.vscode/
+
+# Pybind11 / Cython 编译产物
+*.so
+*.pyd
+
+# 虚拟环境
+venv/
+ENV/
+env/
+.venv/
+.virtualenv/
+*.egg-info/
+
+# 运行时日志 / 临时文件
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.pid
+*.seed
+ui.log
+
+# 数据文件（如果不希望提交）
+*.csv
+*.dat
+*.db
+*.sqlite
+
+# 其他
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# 项目特定的生成目录（若有）
+build/
+dist/
+out/
