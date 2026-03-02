@@ -14,6 +14,7 @@ Requires-Dist: pybind11>=2.10
 Requires-Dist: numpy<2.0
 Requires-Dist: pyserial>=3.5
 Requires-Dist: gradio<6.0
+Requires-Dist: lerobot @ file:./lerobot-0.4.3-py3-none-any.whl
 Dynamic: author
 Dynamic: license-file
 Dynamic: requires-python
