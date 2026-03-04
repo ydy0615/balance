@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 import os
-
+import requests
 # -------------------------------------------------
 # 全局配置 & 日志系统（写入磁盘文件 ui.log）
 # -------------------------------------------------
@@ -227,6 +227,23 @@ def control_speed(spd,off_spd):
     log(msg)
     return (msg, msg)
 
+
+def control_arms():
+    url = "http://127.0.0.1:8081/action-group/run"
+    try:
+        response = requests.post(url, timeout=60)
+        if response.status_code == 200:
+            log("成功控制arms")
+            return ("成功控制arms", "")
+        else:
+            log(f"控制arms失败: {response.text}")
+            return (f"控制arms失败: {response.text}", "")
+    except Exception as e:
+        log(f"控制arms异常: {e}")
+        return (f"控制arms异常: {e}", "")
+
+
+
 # -------------------------------------------------
 # Gradio UI
 # -------------------------------------------------
@@ -256,7 +273,7 @@ with gr.Blocks() as demo:
         
         with gr.Column():
             gr.Markdown("## 速度控制")
-            normal_speed = gr.Slider(label="速度",minimum=-1,maximum=1,value=0.0,step=0.01)
+            normal_speed = gr.Slider(label="速度",minimum=-2,maximum=2,value=0.0,step=0.01)
             off_speed = gr.Slider(label="转向",minimum=-0.5,maximum=0.5,value=0.0,step=0.01)
             normal_speed.change(fn=control_speed,inputs=[normal_speed,off_speed], outputs=[status_box, log_box])
             off_speed.change(fn=control_speed,inputs=[normal_speed,off_speed], outputs=[status_box, log_box])
@@ -266,5 +283,11 @@ with gr.Blocks() as demo:
             torque_output = gr.Textbox(label="腿部扭矩 (N/m)", interactive=False)
             read_btn = gr.Button("读取扭矩")
             read_btn.click(fn=get_torque, inputs=None, outputs=[torque_output, log_box])
+
+        # control arms
+        with gr.Column():
+            gr.Markdown("## arms")
+            arm_btn = gr.Button("控制arms")
+            arm_btn.click(fn=control_arms, inputs=None, outputs=[status_box, log_box])
 
     demo.launch(server_name="0.0.0.0", server_port=7860, debug=True)
