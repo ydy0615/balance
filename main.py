@@ -1,4 +1,4 @@
-﻿import gradio as gr
+import gradio as gr
 from balance import BalanceController
 import logging
 import threading
@@ -26,6 +26,7 @@ def log(msg: str) -> None:
 controller: BalanceController | None = None   # 单例
 motors_enabled = False   # 电机使能状态
 port_opened: bool = False  # 是否已打开串口
+balance_running = False  # 平衡控制运行状态
 
 # -------------------------------------------------
 # 安全创建 BalanceController（带重试）
@@ -152,6 +153,7 @@ def get_torque() -> tuple:
 # -------------------------------------------------
 def _balance_thread(ctrl: BalanceController) -> None:
     """后台线程入口，运行平衡循环并确保资源安全释放。"""
+    global balance_running
     try:
         ctrl.enable_all()
         log("平衡循环启动")
@@ -160,6 +162,7 @@ def _balance_thread(ctrl: BalanceController) -> None:
         log(f"平衡循环异常: {e}")
     finally:
         ctrl.shutdown()
+        balance_running = False
         log("平衡循环已结束，资源已清理")
 
 def start_balance_thread() -> None:
@@ -184,6 +187,7 @@ def start_spd_thread(nomspd,offspd) -> None:
 
 def start_balance() -> tuple:
     """检查电机是否已使能后启动平衡控制。"""
+    global balance_running
     if not port_opened:
         msg = "请先打开串口"
         log(msg)
@@ -193,9 +197,33 @@ def start_balance() -> tuple:
         log(msg)
         return (msg, msg)
     start_balance_thread()
+    balance_running = True
     msg = "平衡控制已启动"
     log(msg)
     return (msg, msg)
+
+def stop_balance() -> tuple:
+    """停止平衡控制：先关闭平衡进程，再降腿，最后失能电机。"""
+    global balance_running
+    
+    # 1. 检查是否启动了平衡进程，如果有则先关闭
+    if balance_running:
+        if controller:
+            controller.shutdown()
+        balance_running = False
+    
+    # 2. 将所有腿部高度降为0，速度为0.5
+    if controller:
+        controller.control_legs_pos(0, 0, 0, 0, 0.5)
+    
+    # 3. 失能所有电机
+    if controller:
+        controller.disable_all()
+    
+    msg = "已停止平衡控制"
+    log(msg)
+    # 返回状态消息和滑块更新（重置为0）
+    return (msg, msg, gr.update(value=0.0), gr.update(value=0.0))
 
 # -------------------------------------------------
 # 日志刷新（用于 UI 按钮）
@@ -259,17 +287,19 @@ with gr.Blocks() as demo:
         # 左侧：电机控制
         with gr.Column():
             gr.Markdown("## 电机控制")
-            # 已移除 “打开串口” 按钮，串口在启动时已自动打开
+            # 已移除 "打开串口" 按钮，串口在启动时已自动打开
             open_btn    = gr.Button("🔌 打开串口")
             enable_btn  = gr.Button("✅ 使能全部")
             disable_btn = gr.Button("❌ 失能全部")
             start_btn   = gr.Button("▶️ 启动平衡控制")
+            stop_btn    = gr.Button("⏹ 停止平衡控制")
             status_box  = gr.Textbox(label="状态", value=init_status, interactive=False)
 
             open_btn.click(fn=open_port, inputs=None, outputs=[status_box, log_box])
             enable_btn.click(fn=enable_all, inputs=None, outputs=[status_box, log_box])
             disable_btn.click(fn=disable_all, inputs=None, outputs=[status_box, log_box])
             start_btn.click(fn=start_balance, inputs=None, outputs=[status_box, log_box])
+            stop_btn.click(fn=stop_balance, inputs=None, outputs=[status_box, log_box, normal_speed, off_speed])
         
         with gr.Column():
             gr.Markdown("## 速度控制")
